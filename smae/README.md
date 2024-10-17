@@ -1,5 +1,9 @@
-# Starbucks Masked Autoencoder
+# Starbucks Masked Autoencoder (SMAE) Pretraining
 
+Our SMAE is initialized with [google-bert/bert-base-uncased](google-bert/https://huggingface.co/google-bert/bert-base-uncased) 
+and pre-trained on [HuggingFaceFW/fineweb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) datasets (100bt sample).
+
+To do SMAE the pre-training, run the following command:
 ```bash
 python pretrain_bert.py \
 --output_dir checkpoints/bert-base-uncased-fineweb100bt-smae \
