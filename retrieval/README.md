@@ -114,7 +114,7 @@ n=6
 d=128
 
 python search.py \
---query_reps embeddings/msmarco/query.dev.pkl \
+--query_reps embeddings/msmarco/query.dl19.pkl \
 --passage_reps embeddings/msmarco/"corpus*.pkl" \
 --depth 1000 \
 --batch_size 64 \
