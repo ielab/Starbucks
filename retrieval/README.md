@@ -5,8 +5,6 @@ Our training code for passage retrieval is based on [Tevatron](https://github.co
 
 To install Tevatron:
 ```bash
-pip install transformers datasets peft
-pip install deepspeed accelerate
 pip install faiss-cpu # or 'conda install pytorch::faiss-gpu' for faiss gpu search
 pip install wandb # for logging
 git clone https://github.com/texttron/tevatron.git

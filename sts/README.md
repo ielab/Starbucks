@@ -10,8 +10,6 @@ This repo supports for three types of fine-tuning:
 ## Installation
 ```bash
 pip install sentence_transformers
-pip install datasets
-pip install torch
 ```
 
 
