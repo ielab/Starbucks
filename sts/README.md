@@ -6,6 +6,16 @@ This repo supports for three types of fine-tuning:
 - **2d_matryoshka**: fine-tuning the the full scale model with 2d matryoshka
 - **starbucks**: fine-tuning the full scale model with starbucks representation learning
 
+
+## Installation
+```bash
+pip install sentence_transformers
+pip install datasets
+pip install torch
+```
+
+
+
 ## To train models
 
 You can train the models by running the following commands:
