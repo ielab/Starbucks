@@ -30,6 +30,6 @@ python pretrain_bert.py \
 --logging_nan_inf_filter False
 ```
 In our experiments, we use 8 NVIDIA H100 GPUs, resulting in a total batch size of 512 with `gradient_accumulation_steps` of 2.
-If you use slurm, we also provide a script example to run the pre-training on multiple node multi gpu training: [pretrain-smae.sh](pretrain-smae.sh).
+If you use slurm, we also provide a script example to run the pre-training on multiple node multi gpu training: [pretrain-smae.sh](./pretrain-smae.sh).
 
 We released our model checkpoints on Hugging Face Model Hub: [bert-base-uncased-fineweb100bt-smae](https://huggingface.co/ielabgroup/bert-base-uncased-fineweb100bt-smae). 
