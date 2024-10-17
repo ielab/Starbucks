@@ -1,4 +1,4 @@
-# Starbucks SRL fine-tuning for STS
+# Starbucks Representation Learning (SRL) fine-tuning for STS
 
 This repository contains the code for fine-tuning from any pre-trained model on the STS benchmark dataset.
 This repo supports for three types of fine-tuning:

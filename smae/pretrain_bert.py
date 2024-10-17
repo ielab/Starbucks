@@ -11,7 +11,7 @@ from transformers import (
 from transformers import Trainer, AutoTokenizer, BertForMaskedLM
 import torch
 from dataclasses import dataclass, field
-from modelling import BertFor2DMatryoshkaMaskedLM, BertFor2DMaekMatryoshkaMaskedLM
+from modeling import BertFor2DMatryoshkaMaskedLM, BertFor2DMaekMatryoshkaMaskedLM
 from data import MLMDataset, DataCollatorForWholeWordMaskWithAttentionMask, MaeDataCollatorForWholeWordMask
 
 logger = logging.getLogger(__name__)
