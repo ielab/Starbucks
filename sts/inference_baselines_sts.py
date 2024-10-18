@@ -11,10 +11,12 @@ from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, Seque
 import re
 from tqdm import tqdm
 
-model_folder = sys.argv[1]
-evaluate_type = sys.argv[2]
+model_folder = sys.argv[1] if len(sys.argv) > 1 else None # this should be the folder where all the seperatly trained baseline models are stored, example: baselines/
+evaluate_type = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low, full for all-nli and low for stsb
+
 assert os.path.exists(model_folder), f"Folder {model_folder} does not exist"
 
+# 1. Define the datasets
 if evaluate_type == "full":
     dataset_dict = {
         "stsb": "sentence-transformers/stsb",
@@ -30,12 +32,14 @@ elif evaluate_type == "low":
         "stsb": "sentence-transformers/stsb",
     }
 
-
+# 2. Define the dimensions and layers
 matryoshka_dims = [32, 64, 128, 256, 512, 768]
 matryoshka_layers = list(range(2, 13, 2))
 
 result_dict = {}
 final_result_dict = {}
+
+# 3. Load the models and evaluate
 for layer in tqdm(matryoshka_layers):
     result_dict[layer] = {}
     for dim in tqdm(matryoshka_dims):
@@ -80,10 +84,7 @@ for layer in tqdm(matryoshka_layers):
                     else:
                         result_dict[layer][result_key_save][dataset] = results[result_key]
 
-
-
-        # with open(os.path.join(model_name, "sts_results.json"), "w") as f:
-        #     json.dump(result_dict[layer_dim_str], f, indent=2)
+# 4. Process the results
 
 for dataset in dataset_dict.keys():
     final_result_dict[dataset] = {}
@@ -119,7 +120,7 @@ for dataset in dataset_dict.keys():
             final_result_dict["average_dataset"][dataset].append(final_result_dict[dataset][layer][dim])
     final_result_dict["average_dataset"][dataset] = sum(final_result_dict["average_dataset"][dataset]) / len(final_result_dict["average_dataset"][dataset])
 
-
+# 5. Save the results
 out_file = os.path.join(model_folder, "sts_results_" + evaluate_type + ".json")
 json.dump(final_result_dict, open(out_file, "w"), indent=2)
 

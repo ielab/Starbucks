@@ -10,11 +10,11 @@ from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, Seque
 import re
 
 model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased" # model name, could be any from huggingface
-evaluate_type = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low
-layer_dim_type = sys.argv[3] if len(sys.argv) > 3 else "diaganol" # diaganol or full
+evaluate_type = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low, full for all-nli and low for stsb
+layer_dim_type = sys.argv[3] if len(sys.argv) > 3 else "diaganol" # diaganol or full, full for full sets, diaganol for starbuck sizes
 
 
-
+#1. Define the datasets
 if evaluate_type == "full":
     dataset_dict = {
         "stsb": "sentence-transformers/stsb",
@@ -30,15 +30,17 @@ elif evaluate_type == "low":
         "stsb": "sentence-transformers/stsb",
     }
 
+
 final_result_dict = {}
 
+#2. Define the dimensions and layers
 matryoshka_dims = []
-
 matryoshka_layers = []
 
 matryoshka_dims += [768, 512, 256, 128, 64, 32]
 matryoshka_layers += [12, 10, 8, 6, 4, 2]
 
+#3. Load the models and evaluate
 for dataset in tqdm(dataset_dict.keys()):
     dataset_loading_name = dataset_dict[dataset]
     test_dataset = load_dataset(dataset_loading_name, split="test")
@@ -73,7 +75,7 @@ for dataset in tqdm(dataset_dict.keys()):
                 #print(result_key_save)
                 result_dict[layer][result_key_save] = results[result_key]
     final_result_dict[dataset] = result_dict
-
+#4. Process the results
 final_result_dict["average"] = {}
 for layer_i, layer in enumerate(matryoshka_layers):
     final_result_dict["average"][layer] = {}
@@ -99,6 +101,7 @@ model_output_folder = model_name.replace("/", "_")
 if not os.path.exists(model_output_folder):
     os.makedirs(model_output_folder)
 
+#5. Save the results
 out_file = os.path.join(model_output_folder, "sts_results_" + evaluate_type + "_" + layer_dim_type + ".json")
 json.dump(final_result_dict, open(out_file, "w"), indent=2)
 
