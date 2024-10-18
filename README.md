@@ -21,3 +21,13 @@ For SMAE pre-training, see [smae](smae/README.md).
 For SRL fine-tuning on retrieval task, see [retrieval](retrieval/README.md).
 
 For SRL fine-tuning on STS task, see [sts](sts/README.md).
+
+### Model Checkpoints
+
+We released our model checkpoints on Hugging Face Model Hub: 
+
+Pre-trained SMAE: [bert-base-uncased-fineweb100bt-smae](https://huggingface.co/ielabgroup/bert-base-uncased-fineweb100bt-smae)
+
+Fine-tuned Starbucks_STS: [Starbucks_STS](https://huggingface.co/ielabgroup/Starbucks_STS)
+
+Fine-tuned Starbucks_Retrieval: [Starbucks_Retrieval](https://huggingface.co/ielabgroup/Starbucks_Retrieval)
