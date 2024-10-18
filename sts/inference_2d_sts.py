@@ -12,6 +12,9 @@ import re
 model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased" # model name, could be any from huggingface
 evaluate_type = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low
 layer_dim_type = sys.argv[3] if len(sys.argv) > 3 else "diaganol" # diaganol or full
+
+
+
 if evaluate_type == "full":
     dataset_dict = {
         "stsb": "sentence-transformers/stsb",

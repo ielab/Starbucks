@@ -4,17 +4,13 @@ Usage:
 python train_baseline.py
 
 OR
-python train_starbucks.py pretrained_transformer_model_name training_type
+python train_starbucks.py pretrained_transformer_model_name training_data training_type
 
 """
 import logging
-import os
 import sys
-import traceback
-from datetime import datetime
-from tqdm import tqdm
-
 from datasets import load_dataset
+import os
 
 from sentence_transformers import (
     SentenceTransformer,
@@ -22,43 +18,45 @@ from sentence_transformers import (
     SentenceTransformerTrainingArguments,
     losses,
 )
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, SequentialEvaluator, SimilarityFunction
+
+model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased" # model name
+training_data = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low, full for all-nli and low for stsb
+training_type = sys.argv[3] if len(sys.argv) > 3 else "diaganol" # diaganol or full, full for full sets, diaganol for starbuck sizes
 
 
-model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased"
-training_type = sys.argv[2] if len(sys.argv) > 2 else "full"
 
 
-
-dims = []
-layers = []
-
-
-if training_type == "full":
+# 1. load the dataset
+if training_data == "full":
     batch_size = 128
     gradient_accumulation_steps = 1
     num_train_epochs = 1
     train_dataset = load_dataset("sentence-transformers/all-nli", "triplet", split="train")
     output_parent= f"all_nli/{model_name.replace('/', '-')}/baselines"
 
-elif training_type == "low":
+elif training_data == "low":
     batch_size = 16
     gradient_accumulation_steps = 1
     num_train_epochs = 4
     train_dataset = load_dataset("sentence-transformers/stsb", split="train")
     output_parent = f"low_resource/{model_name.replace('/', '-')}/baselines"
 
-# for i in range(2, 13, 2):
-#     for j in [64, 32]:
-#         if os.path.exists(f"{output_parent}/layer_{i}_dim_{j}/final"):
-#             continue
-#         layers.append(i)
-#         dims.append(j)
-
-dims += [32, 64, 128, 256, 512, 768]
-layers += list(range(2, 13, 2))
-
 test_dataset = load_dataset("sentence-transformers/stsb", split="test")
+
+
+# 2. Define the dimensions and layers
+dims = []
+layers = []
+if training_type == "diaganol":
+    dims += [32, 64, 128, 256, 512, 768]
+    layers += list(range(2, 13, 2))
+elif training_type == "full":
+    for i in range(2, 13, 2):
+        for j in [64, 32]:
+            if os.path.exists(f"{output_parent}/layer_{i}_dim_{j}/final"):
+                continue
+            layers.append(i)
+            dims.append(j)
 
 
 for layer_idx, layer in enumerate(layers):
@@ -66,7 +64,7 @@ for layer_idx, layer in enumerate(layers):
     # Save path of the model
     dim = dims[layer_idx]
     output_dir = f"{output_parent}/layer_{layer}_dim_{dim}"
-
+    #3. Load the model
     model = SentenceTransformer(model_name)
     model._first_module().auto_model.encoder.layer = model._first_module().auto_model.encoder.layer[:layer]
 
@@ -74,11 +72,11 @@ for layer_idx, layer in enumerate(layers):
 
     logging.info(train_dataset)
 
-    if training_type == "full":
+    # for
+    if training_data == "full":
         train_loss = losses.MultipleNegativesRankingLoss(model)
-    elif training_type == "low":
+    elif training_data == "low":
         train_loss = losses.CoSENTLoss(model)
-
 
     args = SentenceTransformerTrainingArguments(
         # Required parameter:
@@ -99,7 +97,7 @@ for layer_idx, layer in enumerate(layers):
         run_name=f"sts-{layer}-{dim}",  # Will be used in W&B if `wandb` is installed
     )
 
-    # 6. Create the trainer & start training
+    # 4. Create the trainer & start training
     trainer = SentenceTransformerTrainer(
         model=model,
         args=args,
@@ -109,6 +107,6 @@ for layer_idx, layer in enumerate(layers):
     )
     trainer.train()
 
-    # 8. Save the trained & evaluated model locally
+    # 5. Save the trained & evaluated model locally
     final_output_dir = f"{output_dir}/final"
     model.save(final_output_dir)

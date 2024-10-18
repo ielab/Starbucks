@@ -4,13 +4,11 @@ Usage:
 python 2d_matryoshka.py
 
 OR
-python 2d_matryoshka.py pretrained_transformer_model_name
+python 2d_matryoshka.py pretrained_transformer_model_name training_data
 """
 
 import logging
 import sys
-import traceback
-from datetime import datetime
 
 from datasets import load_dataset
 
@@ -26,14 +24,13 @@ from sentence_transformers.training_args import BatchSamplers
 # Set the log level to INFO to get more information
 logging.basicConfig(format="%(asctime)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
 
-model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased"
-training_type = sys.argv[2] if len(sys.argv) > 2 else "full"
+model_name = sys.argv[1] if len(sys.argv) > 1 else "bert-base-uncased" # model name
+training_data = sys.argv[2] if len(sys.argv) > 2 else "full" # full or low, full for all-nli and low for stsb
 
 
 
-
-# Save path of the model
-if training_type == "full":
+# 1. load the dataset
+if training_data == "full":
     batch_size = 128  # The larger you select this, the better the results (usually). But it requires more GPU memory
     gradient_accumulation_steps = 1
     num_train_epochs = 1
@@ -46,24 +43,24 @@ else:
     train_dataset = load_dataset("sentence-transformers/stsb", split="train")
     output_dir = f"low_resource/{model_name.replace('/', '-')}/2d"
 
-# 1. Here we define our SentenceTransformer model. If not already a Sentence Transformer model, it will automatically
-# create one with "mean" pooling.
+
+# 2. Load the model
 model = SentenceTransformer(model_name)
 # If we want, we can limit the maximum sequence length for the model
 # model.max_seq_length = 75
-logging.info(model)
 
+logging.info(model)
 logging.info(train_dataset)
 
-
-if training_type == "full":
+# 3. Define our training loss
+if training_data == "full":
     inner_train_loss = losses.MultipleNegativesRankingLoss(model)
 else:
     inner_train_loss = losses.CoSENTLoss(model)
 
 train_loss = losses.Matryoshka2dLoss(model, inner_train_loss, [768, 512, 256, 128, 64, 32])
 
-# 5. Define the training arguments
+# 4. Define the training arguments
 args = SentenceTransformerTrainingArguments(
     # Required parameter:
     output_dir=output_dir,
@@ -82,7 +79,7 @@ args = SentenceTransformerTrainingArguments(
     run_name="2d-matryoshka-nli",  # Will be used in W&B if `wandb` is installed
 )
 
-# 6. Create the trainer & start training
+# 5. Create the trainer & start training
 trainer = SentenceTransformerTrainer(
     model=model,
     args=args,
@@ -91,7 +88,7 @@ trainer = SentenceTransformerTrainer(
 )
 trainer.train()
 
-# 7. Evaluate the model performance on the STS Benchmark test dataset
+# 6. Evaluate the model performance on the STS Benchmark test dataset
 test_dataset = load_dataset("sentence-transformers/stsb", split="test")
 test_evaluator = EmbeddingSimilarityEvaluator(
     sentences1=test_dataset["sentence1"],
@@ -102,6 +99,6 @@ test_evaluator = EmbeddingSimilarityEvaluator(
 )
 test_evaluator(model)
 
-# 8. Save the trained & evaluated model locally
+# 7. Save the trained & evaluated model locally
 final_output_dir = f"{output_dir}/final"
 model.save(final_output_dir)
