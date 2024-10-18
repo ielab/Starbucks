@@ -128,20 +128,13 @@ class MatryoshkaLoss(nn.Module):
         self.matryoshka_dims, self.matryoshka_weights = zip(*sorted(dims_weights, key=lambda x: x[0], reverse=True))
         self.n_dims_per_step = n_dims_per_step
 
+    # the forward function is modified from the original forward function for matryoshka loss, to accept dim as an argument
     def forward(self, sentence_features: Iterable[dict[str, Tensor]], labels: Tensor, dim: int) -> Tensor:
         original_forward = self.model.forward
         try:
             decorated_forward = ForwardDecorator(original_forward)
             self.model.forward = decorated_forward
-
-            # dim_indices = range(len(self.matryoshka_dims))
-            # if self.n_dims_per_step > 0 and self.n_dims_per_step < len(dim_indices):
-            #     dim_indices = random.sample(dim_indices, self.n_dims_per_step)
-
             loss = 0.0
-            #for idx in dim_indices:
-                #dim = self.matryoshka_dims[idx]
-                #weight = self.matryoshka_weights[idx]
             decorated_forward.set_dim(dim)
             loss += self.loss(sentence_features, labels)
         finally:

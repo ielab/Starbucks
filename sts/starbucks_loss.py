@@ -23,21 +23,26 @@ class StarbucksLoss(nn.Module):
         matryoshka_weights: list[float | int] | None = None,
         n_selections_per_step: int = -1,
         last_layer_weight: float = 1.0,
-        prior_layers_weight: float = 1.0,
         kl_div_weight: float = 1.0,
         kl_temperature: float = 0.3,
     ) -> None:
         """
-        The AdaptiveLayerLoss can be seen as a loss *modifier* that allows you to use other loss functions at non-final
+        The StarbucksLoss can be seen as a loss *modifier* that allows you to use other loss functions at non-final
         layers of the Sentence Transformer model. This is useful for when you want to train a model where users have
-        the option to lower the number of layers used to improve their inference speed and memory usage.
+        the option to train on a set of layer-dimensionality pairs. The StarbucksLoss allows you to train on these pairs
 
         Args:
             model: SentenceTransformer model
             loss: The loss function to be used, e.g.
                 :class:`MultipleNegativesRankingLoss`,
                 :class:`CoSENTLoss`, etc.
-            n_layers_per_step: The number of layers to use per step. If
+            matryoshka_layers: The layers to use for the loss. The layers
+                are 1-indexed, so the first layer is 1, the second layer
+                is 2, etc. Example is `[2, 4, 6, 8, 10, 12]`.
+            matryoshka_dims: The dimensions to use for the loss.
+                Example is `[32, 64, 128, 256, 512, 768]`.
+            matryoshka_weights: The weights to use for the loss of each layer-dimensionality pair.
+            n_selections_per_step: The number of layers to use per step. If
                 -1, then all layers are used. If > 0, then a random
                 sample of `n_layers_per_step` layers are used per step,
                 separate from the final layer, which is always used. The
@@ -47,10 +52,6 @@ class StarbucksLoss(nn.Module):
                 final layer. Increase this to focus more on the
                 performance when using all layers. The default value is
                 1.0.
-            prior_layers_weight: The weight to use for the loss of the
-                prior layers. Increase this to focus more on the
-                performance when using fewer layers. The default value
-                is 1.0.
             kl_div_weight: The weight to use for the KL-divergence loss
                 that is used to make the prior layers match that of the
                 last layer. Increase this to focus more on the
@@ -61,8 +62,7 @@ class StarbucksLoss(nn.Module):
                 default value is 1.0.
 
         References:
-            - The concept was inspired by the 2DMSE paper: https://arxiv.org/abs/2402.14776
-            - `Adaptive Layers <../../examples/training/adaptive_layer/README.html>`_
+            - The concept was inspired by the Starbucks paper: https://arxiv.org/pdf/2410.13230v1
 
         Requirements:
             1. The base loss cannot be :class:`CachedMultipleNegativesRankingLoss` or :class:`CachedGISTEmbedLoss`.
@@ -73,31 +73,6 @@ class StarbucksLoss(nn.Module):
             +=======================================+========+
             | any                                   | any    |
             +---------------------------------------+--------+
-
-        Relations:
-            - :class:`Matryoshka2dLoss` uses this loss in combination with :class:`MatryoshkaLoss` which allows for
-                output dimensionality reduction for faster downstream tasks (e.g. retrieval).
-
-        Example:
-            ::
-
-                from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, losses
-                from datasets import Dataset
-
-                model = SentenceTransformer("microsoft/mpnet-base")
-                train_dataset = Dataset.from_dict({
-                    "anchor": ["It's nice weather outside today.", "He drove to work."],
-                    "positive": ["It's so sunny.", "He took the car to the office."],
-                })
-                loss = losses.MultipleNegativesRankingLoss(model=model)
-                loss = losses.AdaptiveLayerLoss(model, loss)
-
-                trainer = SentenceTransformerTrainer(
-                    model=model,
-                    train_dataset=train_dataset,
-                    loss=loss,
-                )
-                trainer.train()
         """
         super().__init__()
         self.model = model
@@ -111,7 +86,7 @@ class StarbucksLoss(nn.Module):
         self.matryoshka_dims = matryoshka_dims
         self.matryoshka_layers = [layer-1 for layer in matryoshka_layers]
         self.last_layer_weight = last_layer_weight
-        self.prior_layers_weight = prior_layers_weight
+        self.prior_layers_weight = 1
         self.kl_div_weight = kl_div_weight
         self.kl_temperature = kl_temperature
         assert isinstance(self.model[0], Transformer)
@@ -138,11 +113,10 @@ class StarbucksLoss(nn.Module):
         loss = self.loss(sentence_features, labels, 768) * self.last_layer_weight
         if self.kl_temperature > 0:
             final_embeddings = forward_decorator.get_embeddings()
-            #final_embeddings_softmax = F.softmax(final_embeddings / self.kl_temperature, dim=-1)
-            #final_embeddings = F.softmax(final_embeddings / self.kl_temperature, dim=-1)
 
         num_layers = transformer_decorator.num_layers
 
+        # remove the last layer, as we already computed the loss over it
         layer_indices = [i for i in self.matryoshka_layers if i < num_layers - 1]
         dim_indices = [self.matryoshka_dims[i] for i in range(len(layer_indices))]
 
@@ -165,12 +139,6 @@ class StarbucksLoss(nn.Module):
                 embeddings = forward_decorator.get_embeddings()
                 # copy a final embeddings with the same shape as embeddings by cutting dimensions
                 kl_div_loss = self.kl_divergence_loss(embeddings, final_embeddings.clone(), dim=dim_idx, reduction="batchmean")
-
-                #     F.kl_div(
-                #     F.log_softmax(embeddings / self.kl_temperature, dim=-1),
-                #     final_embeddings,
-                #     reduction="batchmean",
-                # )
                 loss = loss + kl_div_loss * self.kl_temperature * self.kl_div_weight
 
         self.model[0].forward = original_transformer_forward
