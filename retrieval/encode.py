@@ -123,7 +123,6 @@ def main():
 
     # for each layer, we need to pickle dump to different output_path
     for i, encoded_layer in enumerate(encoded):
-        print(encoded_layer.shape)######################################################################
         out_folder = os.path.join(encode_output_folder, f"layer_{i}")
         if (layers_to_save is None) or (i in layers_to_save):
             if not os.path.exists(out_folder):
