@@ -24,6 +24,7 @@ If you have any issues with the pyserini installation, please follow this [link]
 ## Training
 To train the model, run the following command:
 ```bash
+CUDA_VISIBLE_DEVICES=1 \
 python3 train.py \
   --output_dir checkpoints/retriever/bert-srl-msmarco \
   --model_name_or_path bert-base-uncased \
@@ -34,8 +35,8 @@ python3 train.py \
   --bf16 \
   --pooling cls \
   --gradient_checkpointing \
-  --per_device_train_batch_size 128 \
-  --train_group_size 8 \
+  --per_device_train_batch_size 64 \
+  --train_group_size 1 \
   --learning_rate 1e-4 \
   --query_max_len 32 \
   --passage_max_len 196 \
@@ -60,9 +61,10 @@ You can change `--model_name_or_path` to you own fine-tuned model.
 ### Step 1: Encode query and passage embeddings
 #### Encode query:
 ```bash
+CUDA_VISIBLE_DEVICES=1 \
 python3 encode.py \
   --output_dir=temp \
-  --model_name_or_path Starbucks-msmarco \
+  --model_name_or_path ./checkpoints/retriever/bert-srl-msmarco \
   --bf16 \
   --pooling cls \
   --per_device_eval_batch_size 64 \
@@ -81,11 +83,11 @@ We shard the collection and encode each shard in parallel with multiple GPUs.
 For example, if you have 2 GPUs, you can run the following commands:
 ```bash
 mkdir -p embeddings/msmarco
-NUM_AVAILABLE_GPUS=4
+NUM_AVAILABLE_GPUS=1
 for i in $(seq 0 $((NUM_AVAILABLE_GPUS-1))); do
     CUDA_VISIBLE_DEVICES=${i} python encode.py \
       --output_dir=temp \
-      --model_name_or_path Starbucks-msmarco \
+      --model_name_or_path ielabgroup/Starbucks-msmarco \
       --bf16 \
       --pooling cls \
       --per_device_eval_batch_size 64 \
@@ -112,8 +114,8 @@ n=6
 d=128
 
 python search.py \
---query_reps embeddings/msmarco/query.dl19.pkl \
---passage_reps embeddings/msmarco/"corpus*.pkl" \
+--query_reps embeddings/msmarco/layer_12/query.dl19.pkl \
+--passage_reps embeddings/msmarco/layer_12/"corpus*.pkl" \
 --depth 1000 \
 --batch_size 64 \
 --save_text \
